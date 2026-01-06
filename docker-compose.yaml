@@ -60,6 +60,9 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      DOMAIN: ${PROXY_DOMAIN:-localhost}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -68,6 +71,7 @@ services:
       - api
     profiles:
       - proxy
+    restart: unless-stopped
 
 volumes:
   postgres_data:
