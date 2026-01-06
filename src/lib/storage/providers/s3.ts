@@ -39,32 +39,32 @@ export class S3StorageProvider implements StorageProvider {
     );
   }
 
-  async upload(_key: string, _data: Buffer, _contentType: string): Promise<void> {
+  upload(_key: string, _data: Buffer, _contentType: string): Promise<void> {
     // TODO: Implement with @aws-sdk/client-s3
-    throw new Error('S3 storage not implemented. Install @aws-sdk/client-s3 and implement.');
+    return Promise.reject(new Error('S3 storage not implemented. Install @aws-sdk/client-s3 and implement.'));
   }
 
-  async download(_key: string): Promise<Buffer> {
-    throw new Error('S3 storage not implemented');
+  download(_key: string): Promise<Buffer> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 
-  async delete(_key: string): Promise<void> {
-    throw new Error('S3 storage not implemented');
+  delete(_key: string): Promise<void> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 
-  async exists(_key: string): Promise<boolean> {
-    throw new Error('S3 storage not implemented');
+  exists(_key: string): Promise<boolean> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 
-  async getMetadata(_key: string): Promise<StorageObject | null> {
-    throw new Error('S3 storage not implemented');
+  getMetadata(_key: string): Promise<StorageObject | null> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 
-  async list(_prefix?: string): Promise<StorageObject[]> {
-    throw new Error('S3 storage not implemented');
+  list(_prefix?: string): Promise<StorageObject[]> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 
-  async getSignedUrl(_key: string, _expiresIn: number): Promise<string> {
-    throw new Error('S3 storage not implemented');
+  getSignedUrl(_key: string, _expiresIn: number): Promise<string> {
+    return Promise.reject(new Error('S3 storage not implemented'));
   }
 }

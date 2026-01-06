@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifyAccessToken, type AccessTokenPayload } from '../../lib/auth/jwt.js';
+import { verifyAccessToken } from '../../lib/auth/jwt.js';
 import { logger } from '../../lib/logger.js';
 
 /**

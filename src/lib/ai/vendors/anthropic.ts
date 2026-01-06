@@ -145,7 +145,7 @@ export class AnthropicVendor implements AiVendor {
     const decoder = new TextDecoder();
     let fullText = '';
     let usage = { inputTokens: 0, outputTokens: 0 };
-    let finishReason: CompletionResponse['finishReason'] = 'end_turn';
+    const finishReason: CompletionResponse['finishReason'] = 'end_turn';
 
     try {
       while (true) {

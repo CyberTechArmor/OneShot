@@ -54,7 +54,9 @@ export class ElevenLabsVendor implements VoiceVendor {
 
   async transcribe(audio: Buffer, mimeType: string): Promise<TranscriptResult> {
     const formData = new FormData();
-    formData.append('audio', new Blob([audio], { type: mimeType }), 'audio');
+    // Convert Buffer to ArrayBuffer for Blob compatibility
+    const arrayBuffer = audio.buffer.slice(audio.byteOffset, audio.byteOffset + audio.byteLength) as ArrayBuffer;
+    formData.append('audio', new Blob([arrayBuffer], { type: mimeType }), 'audio');
     formData.append('model_id', 'scribe_v1');
 
     const startTime = Date.now();

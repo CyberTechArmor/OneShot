@@ -223,7 +223,7 @@ export class OpenAIVendor implements AiVendor {
         result.push({ role: 'system', content: m.content });
       } else {
         result.push({
-          role: m.role as 'user' | 'assistant',
+          role: m.role,
           content: m.content,
         });
       }

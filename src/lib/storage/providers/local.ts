@@ -79,7 +79,7 @@ export class LocalStorageProvider implements StorageProvider {
 
     try {
       const files = await this.walkDirectory(searchPath);
-      return Promise.all(
+      return await Promise.all(
         files.map(async (filePath) => {
           const key = path.relative(this.basePath, filePath);
           const stats = await fs.stat(filePath);

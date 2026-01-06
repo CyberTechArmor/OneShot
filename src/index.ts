@@ -7,7 +7,8 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import pinoHttp from 'pino-http';
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const pinoHttp: any = require('pino-http');
 import { env } from './config/env.js';
 import { logger } from './lib/logger.js';
 import { errorHandler, notFoundHandler } from './api/middleware/error.js';
@@ -37,10 +38,11 @@ function createApp() {
   app.use(cookieParser());
 
   // Request logging
+   
   app.use(
     pinoHttp({
       logger,
-      customProps: (req) => ({
+      customProps: (req: { id?: string }) => ({
         requestId: req.id,
       }),
       redact: ['req.headers.authorization', 'req.headers.cookie'],

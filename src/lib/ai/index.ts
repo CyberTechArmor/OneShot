@@ -8,8 +8,8 @@
 import type { AiVendor, AiVendorConfig } from './types.js';
 import { AnthropicVendor } from './vendors/anthropic.js';
 import { OpenAIVendor } from './vendors/openai.js';
-import { env } from '../config/env.js';
-import { logger } from './logger.js';
+import { env } from '../../config/env.js';
+import { logger } from '../logger.js';
 
 export type VendorType = 'anthropic' | 'openai' | 'local';
 
@@ -40,7 +40,7 @@ export function createVendor(type: VendorType, config?: Partial<AiVendorConfig>)
       });
 
     default:
-      throw new Error(`Unknown AI vendor: ${type}`);
+      throw new Error(`Unknown AI vendor: ${type as string}`);
   }
 }
 

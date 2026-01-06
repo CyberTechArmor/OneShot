@@ -5,8 +5,8 @@
 
 import type { VoiceVendor, VoiceVendorConfig } from './types.js';
 import { ElevenLabsVendor } from './vendors/elevenlabs.js';
-import { env } from '../config/env.js';
-import { logger } from './logger.js';
+import { env } from '../../config/env.js';
+import { logger } from '../logger.js';
 
 export type VoiceVendorType = 'elevenlabs';
 
@@ -25,7 +25,7 @@ export function createVoiceVendor(
       });
 
     default:
-      throw new Error(`Unknown voice vendor: ${type}`);
+      throw new Error(`Unknown voice vendor: ${type as string}`);
   }
 }
 

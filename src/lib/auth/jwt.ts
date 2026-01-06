@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { env } from '../../config/env.js';
 
 /**
@@ -23,7 +23,7 @@ export interface AccessTokenPayload {
 export function signAccessToken(payload: Omit<AccessTokenPayload, 'iat' | 'exp'>): string {
   return jwt.sign(payload, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRY,
-  });
+  } as SignOptions);
 }
 
 /**

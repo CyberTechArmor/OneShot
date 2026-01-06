@@ -6,8 +6,8 @@
 import type { StorageProvider } from './types.js';
 import { LocalStorageProvider } from './providers/local.js';
 import { S3StorageProvider } from './providers/s3.js';
-import { env } from '../config/env.js';
-import { logger } from './logger.js';
+import { env } from '../../config/env.js';
+import { logger } from '../logger.js';
 
 export type StorageType = 'local' | 's3';
 
