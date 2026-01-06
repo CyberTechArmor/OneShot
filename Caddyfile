@@ -18,16 +18,28 @@
 # Uses HTTPS automatically when DOMAIN is a real domain
 # Falls back to HTTP for localhost
 {$DOMAIN:localhost} {
-	# Reverse proxy to API
-	reverse_proxy api:5090 {
-		# WebSocket support for voice features
-		header_up X-Real-IP {remote_host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up Host {host}
+	# API routes - proxy to backend
+	handle /api/* {
+		reverse_proxy api:5090 {
+			# WebSocket support for voice features
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
 
-		# Flush for streaming responses
-		flush_interval -1
+			# Flush for streaming responses
+			flush_interval -1
+		}
+	}
+
+	# All other routes - proxy to frontend
+	handle {
+		reverse_proxy web:80 {
+			header_up X-Real-IP {remote_host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up Host {host}
+		}
 	}
 
 	# Security headers
