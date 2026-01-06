@@ -117,8 +117,10 @@ PROXY_ENABLED=${PROXY_ENABLED:-n}
 if [[ "$PROXY_ENABLED" =~ ^[Yy]$ ]]; then
     sed -i.bak "s/PROXY_ENABLED=.*/PROXY_ENABLED=true/" .env && rm -f .env.bak
     read -p "Domain (e.g., oneshot.example.com): " DOMAIN
+    # Remove any stray quotes from domain input
+    DOMAIN=$(echo "$DOMAIN" | tr -d "'" | tr -d '"')
     if [ -n "$DOMAIN" ]; then
-        sed -i.bak "s/PROXY_DOMAIN=.*/PROXY_DOMAIN=$DOMAIN/" .env && rm -f .env.bak
+        sed -i.bak "s|PROXY_DOMAIN=.*|PROXY_DOMAIN=$DOMAIN|" .env && rm -f .env.bak
     fi
 else
     sed -i.bak "s/PROXY_ENABLED=.*/PROXY_ENABLED=false/" .env && rm -f .env.bak
