@@ -7,9 +7,13 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const pinoHttp: any = require('pino-http');
+import { createRequire } from 'module';
 import { env } from './config/env.js';
+
+// Use createRequire for pino-http (ESM/CJS interop)
+const require = createRequire(import.meta.url);
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pinoHttp = require('pino-http');
 import { logger } from './lib/logger.js';
 import { errorHandler, notFoundHandler } from './api/middleware/error.js';
 import { checkDatabaseConnection, closeDatabaseConnection } from './db/client.js';
