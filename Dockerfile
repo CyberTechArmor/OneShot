@@ -15,11 +15,8 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
-# Generate database migrations
-RUN npm run db:generate || true
-
-# Ensure drizzle directory exists
-RUN mkdir -p drizzle
+# Create scripts directory if not exists
+RUN mkdir -p scripts
 
 # Copy startup script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
@@ -46,16 +43,11 @@ WORKDIR /app
 COPY --from=builder --chown=nodejs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nodejs:nodejs /app/package.json ./
-COPY --from=builder --chown=nodejs:nodejs /app/drizzle ./drizzle
-COPY --from=builder --chown=nodejs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
-COPY --from=builder --chown=nodejs:nodejs /app/src/db/schema.ts ./src/db/schema.ts
+COPY --from=builder --chown=nodejs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nodejs:nodejs /docker-entrypoint.sh /docker-entrypoint.sh
 
-# Install drizzle-kit and tsx for migrations
-RUN npm install drizzle-kit tsx typescript
-
-# Create upload directory and ensure schema dir exists
-RUN mkdir -p /app/uploads /app/src/db && chown -R nodejs:nodejs /app/uploads /app/src
+# Create upload directory
+RUN mkdir -p /app/uploads && chown -R nodejs:nodejs /app/uploads
 
 USER nodejs
 
