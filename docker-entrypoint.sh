@@ -10,15 +10,10 @@ done
 echo "==> Database is ready!"
 
 echo "==> Running database migrations..."
-# Push schema changes directly to database using tsx for TypeScript config
-npx tsx node_modules/drizzle-kit/bin.cjs push --force || {
-  echo "Warning: Migration with tsx failed, trying alternate method..."
-  # Fallback: try with npx directly
-  npx drizzle-kit push --force 2>/dev/null || {
-    echo "Warning: Could not run migrations, continuing anyway..."
-  }
+# Run migration script using Node.js directly
+node /app/scripts/migrate.js || {
+  echo "Warning: Migration script had errors, continuing anyway..."
 }
-echo "==> Migrations complete!"
 
 echo "==> Starting OneShot API..."
 exec "$@"
