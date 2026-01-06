@@ -13,6 +13,9 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Repository
+REPO_URL="https://github.com/CyberTechArmor/OneShot.git"
+
 # Logging
 log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
@@ -43,7 +46,31 @@ if ! command -v docker compose &> /dev/null; then
     exit 1
 fi
 
+if ! command -v git &> /dev/null; then
+    log_error "Git is required but not installed."
+    exit 1
+fi
+
 log_success "Prerequisites satisfied"
+echo ""
+
+# Clone repository if not already in it
+if [ ! -f "package.json" ] || ! grep -q '"name": "oneshot"' package.json 2>/dev/null; then
+    log_info "Cloning OneShot repository..."
+    read -p "Installation directory [oneshot]: " INSTALL_DIR
+    INSTALL_DIR=${INSTALL_DIR:-oneshot}
+
+    if [ -d "$INSTALL_DIR" ]; then
+        log_error "Directory '$INSTALL_DIR' already exists."
+        exit 1
+    fi
+
+    git clone "$REPO_URL" "$INSTALL_DIR"
+    cd "$INSTALL_DIR"
+    log_success "Repository cloned to $INSTALL_DIR"
+else
+    log_info "Running from existing OneShot directory"
+fi
 echo ""
 
 # Create .env if not exists
@@ -69,6 +96,20 @@ echo ""
 read -p "API Port [5090]: " PORT
 PORT=${PORT:-5090}
 sed -i.bak "s/PORT=.*/PORT=$PORT/" .env && rm -f .env.bak
+
+# Admin Email
+echo ""
+log_info "Admin Configuration"
+echo "The first user to register becomes super_admin."
+echo ""
+read -p "Admin Email Address: " ADMIN_EMAIL
+while [ -z "$ADMIN_EMAIL" ]; do
+    log_warn "Email address is required"
+    read -p "Admin Email Address: " ADMIN_EMAIL
+done
+sed -i.bak "s/ADMIN_EMAIL=.*/ADMIN_EMAIL=$ADMIN_EMAIL/" .env && rm -f .env.bak
+log_success "Admin email: $ADMIN_EMAIL"
+echo ""
 
 # Reverse proxy
 read -p "Enable reverse proxy? (y/n) [n]: " PROXY_ENABLED
