@@ -21,6 +21,7 @@ import { checkDatabaseConnection, closeDatabaseConnection } from './db/client.js
 // Import routes
 import healthRoutes from './api/routes/health.js';
 import authRoutes from './api/routes/auth.js';
+import projectRoutes from './api/routes/projects.js';
 
 /**
  * Create and configure Express application.
@@ -56,9 +57,9 @@ function createApp() {
   // Routes
   app.use('/api', healthRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/projects', projectRoutes);
 
   // TODO: Add remaining routes
-  // app.use('/api/projects', projectRoutes);
   // app.use('/api/conversations', conversationRoutes);
   // app.use('/api/documents', documentRoutes);
   // app.use('/api/voice', voiceRoutes);
