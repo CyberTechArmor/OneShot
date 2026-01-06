@@ -15,6 +15,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Generate database migrations if not exists
+RUN npm run db:generate || true
+
+# Ensure drizzle directory exists (may be empty if no schema changes)
+RUN mkdir -p drizzle
+
 # Prune dev dependencies
 RUN npm prune --production
 
