@@ -1,0 +1,1386 @@
+openapi: 3.1.0
+info:
+  title: OneShot API
+  version: 1.0.0
+  description: |
+    OneShot is a voice-first platform for Collaborative Intelligence Development (CID).
+    
+    ## Authentication
+    
+    All endpoints except `/auth/*` require a valid JWT Bearer token.
+    
+    - Access tokens expire in 15 minutes
+    - Refresh tokens expire in 7 days
+    - Use `POST /auth/refresh` to get new access tokens
+    
+    ## Rate Limits
+    
+    - 100 requests per minute per IP (unauthenticated)
+    - 300 requests per minute per user (authenticated)
+    - Headers: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+    
+    ## Errors
+    
+    All errors return: `{ "code": "ERROR_CODE", "message": "Human-readable message", "details": {} }`
+
+servers:
+  - url: http://localhost:5090/api
+    description: Local development
+  - url: https://{domain}/api
+    description: Production
+    variables:
+      domain:
+        default: oneshot.example.com
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Authentication and authorization
+  - name: Projects
+    description: Project management
+  - name: Conversations
+    description: Chat conversations within projects
+  - name: Voice
+    description: Voice input/output operations
+  - name: Documents
+    description: Document management and export
+  - name: Admin
+    description: Administrative operations
+
+paths:
+  # ============================================================================
+  # Health
+  # ============================================================================
+  
+  /health:
+    get:
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      tags: [Health]
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+
+  # ============================================================================
+  # Authentication
+  # ============================================================================
+  
+  /auth/register:
+    post:
+      summary: Register new user
+      operationId: register
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      summary: Login with email and password
+      operationId: login
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/magic-link:
+    post:
+      summary: Request magic link email
+      operationId: requestMagicLink
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Magic link sent (always returns 200 to prevent email enumeration)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "If an account exists, a magic link has been sent"
+
+  /auth/verify-magic-link:
+    post:
+      summary: Verify magic link token
+      operationId: verifyMagicLink
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+      responses:
+        '200':
+          description: Token valid, user authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refreshToken
+      security: []
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Logout and revoke refresh token
+      operationId: logout
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      summary: Get current user
+      operationId: getCurrentUser
+      tags: [Auth]
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ============================================================================
+  # Projects
+  # ============================================================================
+
+  /projects:
+    get:
+      summary: List user's projects
+      operationId: listProjects
+      tags: [Projects]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/ProjectStatus'
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by project name
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Project'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    
+    post:
+      summary: Create new project
+      operationId: createProject
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+      responses:
+        '201':
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+
+  /projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: Get project details
+      operationId: getProject
+      tags: [Projects]
+      responses:
+        '200':
+          description: Project details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectDetail'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    
+    patch:
+      summary: Update project
+      operationId: updateProject
+      tags: [Projects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProjectRequest'
+      responses:
+        '200':
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+    
+    delete:
+      summary: Delete project (soft delete)
+      operationId: deleteProject
+      tags: [Projects]
+      responses:
+        '204':
+          description: Project deleted
+
+  /projects/{projectId}/advance-phase:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    post:
+      summary: Advance project to next CID phase
+      operationId: advancePhase
+      tags: [Projects]
+      description: |
+        Advances the project from current phase to the next:
+        - discovery → design
+        - design → stack
+        - stack → build (generates build prompt)
+        
+        Creates a new conversation in the next phase with appropriate context.
+      responses:
+        '200':
+          description: Phase advanced
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  project:
+                    $ref: '#/components/schemas/Project'
+                  newConversation:
+                    $ref: '#/components/schemas/Conversation'
+        '400':
+          description: Cannot advance (already at build phase or missing requirements)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{projectId}/token-usage:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: Get project token usage summary
+      operationId: getProjectTokenUsage
+      tags: [Projects]
+      responses:
+        '200':
+          description: Token usage summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenUsageSummary'
+
+  # ============================================================================
+  # Conversations
+  # ============================================================================
+
+  /projects/{projectId}/conversations:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: List conversations in project
+      operationId: listConversations
+      tags: [Conversations]
+      parameters:
+        - name: phase
+          in: query
+          schema:
+            $ref: '#/components/schemas/CidPhase'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+    
+    post:
+      summary: Start new conversation
+      operationId: createConversation
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phase:
+                  $ref: '#/components/schemas/CidPhase'
+                title:
+                  type: string
+      responses:
+        '201':
+          description: Conversation created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+
+  /conversations/{conversationId}:
+    parameters:
+      - $ref: '#/components/parameters/conversationId'
+    
+    get:
+      summary: Get conversation with messages
+      operationId: getConversation
+      tags: [Conversations]
+      parameters:
+        - name: messageLimit
+          in: query
+          schema:
+            type: integer
+            default: 50
+          description: Number of recent messages to include
+      responses:
+        '200':
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConversationDetail'
+
+  /conversations/{conversationId}/messages:
+    parameters:
+      - $ref: '#/components/parameters/conversationId'
+    
+    post:
+      summary: Send message (text)
+      operationId: sendMessage
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  maxLength: 50000
+      responses:
+        '200':
+          description: AI response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userMessage:
+                    $ref: '#/components/schemas/Message'
+                  assistantMessage:
+                    $ref: '#/components/schemas/Message'
+                  tokensUsed:
+                    type: integer
+
+  /conversations/{conversationId}/messages/stream:
+    parameters:
+      - $ref: '#/components/parameters/conversationId'
+    
+    post:
+      summary: Send message with streaming response
+      operationId: sendMessageStream
+      tags: [Conversations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  maxLength: 50000
+      responses:
+        '200':
+          description: Streaming AI response
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: |
+                  SSE stream with events:
+                  - `data: {"type": "chunk", "content": "..."}`
+                  - `data: {"type": "done", "tokensUsed": 123}`
+
+  # ============================================================================
+  # Voice
+  # ============================================================================
+
+  /conversations/{conversationId}/voice/stt:
+    parameters:
+      - $ref: '#/components/parameters/conversationId'
+    
+    post:
+      summary: Speech to text
+      operationId: speechToText
+      tags: [Voice]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file (webm, mp3, wav)
+      responses:
+        '200':
+          description: Transcription result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  transcript:
+                    type: string
+                  confidence:
+                    type: number
+                  durationSeconds:
+                    type: number
+
+  /conversations/{conversationId}/voice/send:
+    parameters:
+      - $ref: '#/components/parameters/conversationId'
+    
+    post:
+      summary: Send voice message (STT → AI → TTS)
+      operationId: sendVoiceMessage
+      tags: [Voice]
+      description: |
+        Complete voice pipeline:
+        1. Transcribe audio via ElevenLabs STT
+        2. Send transcript to AI
+        3. Convert AI response to speech via ElevenLabs TTS
+        4. Return audio response
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Voice response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userTranscript:
+                    type: string
+                  assistantText:
+                    type: string
+                  audioUrl:
+                    type: string
+                    format: uri
+                    description: Temporary URL to audio response
+                  tokensUsed:
+                    type: integer
+                  latencyMs:
+                    type: object
+                    properties:
+                      stt:
+                        type: integer
+                      ai:
+                        type: integer
+                      tts:
+                        type: integer
+
+  /voice/tts:
+    post:
+      summary: Text to speech (standalone)
+      operationId: textToSpeech
+      tags: [Voice]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 5000
+      responses:
+        '200':
+          description: Audio response
+          content:
+            audio/mpeg:
+              schema:
+                type: string
+                format: binary
+
+  # ============================================================================
+  # Documents
+  # ============================================================================
+
+  /projects/{projectId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: List project documents
+      operationId: listDocuments
+      tags: [Documents]
+      parameters:
+        - name: phase
+          in: query
+          schema:
+            $ref: '#/components/schemas/CidPhase'
+        - name: type
+          in: query
+          schema:
+            $ref: '#/components/schemas/DocumentType'
+      responses:
+        '200':
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Document'
+
+  /documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/documentId'
+    
+    get:
+      summary: Get document content
+      operationId: getDocument
+      tags: [Documents]
+      responses:
+        '200':
+          description: Document with content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentDetail'
+    
+    patch:
+      summary: Update document content
+      operationId: updateDocument
+      tags: [Documents]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                content:
+                  type: string
+                changeNote:
+                  type: string
+                  description: Optional note describing the change
+      responses:
+        '200':
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+
+  /documents/{documentId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/documentId'
+    
+    get:
+      summary: List document versions
+      operationId: listDocumentVersions
+      tags: [Documents]
+      responses:
+        '200':
+          description: Version history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DocumentVersion'
+
+  /documents/{documentId}/versions/{version}:
+    parameters:
+      - $ref: '#/components/parameters/documentId'
+      - name: version
+        in: path
+        required: true
+        schema:
+          type: integer
+    
+    get:
+      summary: Get specific version content
+      operationId: getDocumentVersion
+      tags: [Documents]
+      responses:
+        '200':
+          description: Version content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentVersion'
+
+  /documents/{documentId}/export:
+    parameters:
+      - $ref: '#/components/parameters/documentId'
+    
+    get:
+      summary: Export document
+      operationId: exportDocument
+      tags: [Documents]
+      parameters:
+        - name: format
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [markdown, pdf, docx]
+      responses:
+        '200':
+          description: Exported document
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /projects/{projectId}/export:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: Export all project documents
+      operationId: exportProject
+      tags: [Documents]
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [zip]
+            default: zip
+      responses:
+        '200':
+          description: Project archive
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
+  /projects/{projectId}/build-prompt:
+    parameters:
+      - $ref: '#/components/parameters/projectId'
+    
+    get:
+      summary: Get generated build prompt
+      operationId: getBuildPrompt
+      tags: [Documents]
+      description: |
+        Returns the generated build handoff prompt for Claude Code.
+        Only available after completing the stack phase.
+      responses:
+        '200':
+          description: Build prompt
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  prompt:
+                    type: string
+                  generatedAt:
+                    type: string
+                    format: date-time
+        '400':
+          description: Stack phase not complete
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ============================================================================
+  # Admin
+  # ============================================================================
+
+  /admin/users:
+    get:
+      summary: List all users (admin only)
+      operationId: adminListUsers
+      tags: [Admin]
+      parameters:
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/offset'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/User'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/users/{userId}/role:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    
+    patch:
+      summary: Update user role (super_admin only)
+      operationId: updateUserRole
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  $ref: '#/components/schemas/UserRole'
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/settings:
+    get:
+      summary: Get system settings (admin only)
+      operationId: getSettings
+      tags: [Admin]
+      responses:
+        '200':
+          description: System settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+    
+    patch:
+      summary: Update system settings (admin only)
+      operationId: updateSettings
+      tags: [Admin]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSettingsRequest'
+      responses:
+        '200':
+          description: Settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettings'
+
+# ============================================================================
+# Components
+# ============================================================================
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    projectId:
+      name: projectId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    conversationId:
+      name: conversationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    documentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    
+    limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    
+    offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    # Enums
+    UserRole:
+      type: string
+      enum: [user, admin, super_admin]
+    
+    ProjectStatus:
+      type: string
+      enum: [active, archived, completed]
+    
+    CidPhase:
+      type: string
+      enum: [discovery, design, stack, build]
+    
+    DocumentType:
+      type: string
+      enum: [discovery_output, design_output, stack_output, build_prompt, custom]
+    
+    MessageSender:
+      type: string
+      enum: [user, assistant, system]
+    
+    # Auth
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        name:
+          type: string
+    
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    
+    AuthResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+          description: Access token expiry in seconds
+        user:
+          $ref: '#/components/schemas/User'
+    
+    # User
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        emailVerified:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+    
+    # Project
+    CreateProjectRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+    
+    UpdateProjectRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+    
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          $ref: '#/components/schemas/ProjectStatus'
+        currentPhase:
+          $ref: '#/components/schemas/CidPhase'
+        totalTokensUsed:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/Project'
+        - type: object
+          properties:
+            documents:
+              type: array
+              items:
+                $ref: '#/components/schemas/Document'
+            recentConversations:
+              type: array
+              items:
+                $ref: '#/components/schemas/Conversation'
+    
+    # Conversation
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        phase:
+          $ref: '#/components/schemas/CidPhase'
+        title:
+          type: string
+        tokensUsed:
+          type: integer
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    ConversationDetail:
+      allOf:
+        - $ref: '#/components/schemas/Conversation'
+        - type: object
+          properties:
+            messages:
+              type: array
+              items:
+                $ref: '#/components/schemas/Message'
+    
+    # Message
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        sender:
+          $ref: '#/components/schemas/MessageSender'
+        inputType:
+          type: string
+          enum: [text, voice]
+        content:
+          type: string
+        tokensUsed:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    
+    # Document
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        projectId:
+          type: string
+          format: uuid
+        type:
+          $ref: '#/components/schemas/DocumentType'
+        phase:
+          $ref: '#/components/schemas/CidPhase'
+        title:
+          type: string
+        format:
+          type: string
+        isLocked:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    
+    DocumentDetail:
+      allOf:
+        - $ref: '#/components/schemas/Document'
+        - type: object
+          properties:
+            content:
+              type: string
+    
+    DocumentVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+        content:
+          type: string
+        changeNote:
+          type: string
+        editedBy:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    
+    # Token Usage
+    TokenUsageSummary:
+      type: object
+      properties:
+        projectTotal:
+          type: integer
+        byPhase:
+          type: object
+          additionalProperties:
+            type: integer
+        byVendor:
+          type: object
+          additionalProperties:
+            type: integer
+        estimatedCostUsd:
+          type: number
+    
+    # Admin
+    SystemSettings:
+      type: object
+      properties:
+        ai:
+          type: object
+          properties:
+            defaultVendor:
+              type: string
+              enum: [anthropic, openai, local]
+            anthropicModel:
+              type: string
+            openaiModel:
+              type: string
+        smtp:
+          type: object
+          properties:
+            configured:
+              type: boolean
+            host:
+              type: string
+        storage:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [local, s3]
+    
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        ai:
+          type: object
+          properties:
+            defaultVendor:
+              type: string
+            anthropicApiKey:
+              type: string
+            anthropicModel:
+              type: string
+            openaiApiKey:
+              type: string
+            openaiModel:
+              type: string
+            localEndpoint:
+              type: string
+        voice:
+          type: object
+          properties:
+            elevenlabsApiKey:
+              type: string
+            elevenlabsVoiceId:
+              type: string
+        smtp:
+          type: object
+          properties:
+            host:
+              type: string
+            port:
+              type: integer
+            user:
+              type: string
+            password:
+              type: string
+            from:
+              type: string
+    
+    # Common
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        hasMore:
+          type: boolean
+    
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - AUTHENTICATION_REQUIRED
+            - FORBIDDEN
+            - NOT_FOUND
+            - CONFLICT
+            - RATE_LIMITED
+            - INTERNAL_ERROR
+        message:
+          type: string
+        details:
+          type: object

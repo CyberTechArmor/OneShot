@@ -1,0 +1,266 @@
+# Discovery Briefing
+# Handoff package from Discovery phase to Design phase
+# Project: OneShot - Collaborative Intelligence Development Platform
+
+project: "OneShot"
+discovery_completed: "2026-01-05"
+discovery_owner: "Thomas (Fractionate LLC)"
+
+# Artifact locations relative to project root
+artifacts:
+  problem_statement: "docs/discovery/problem-statement.md"
+  personas:
+    - "docs/discovery/personas/product-visionary.md"
+    - "docs/discovery/personas/fractional-consultant.md"
+    - "docs/discovery/personas/instance-administrator.md"
+  success_criteria: "docs/discovery/success-criteria.md"
+  constraints: "docs/discovery/constraints.md"
+  scope_boundaries: "docs/discovery/scope-boundaries.md"
+  risk_register: "docs/discovery/risk-register.md"
+
+# Summary of key decisions made during Discovery
+decisions_summary:
+  - decision: "Voice conversation is the core differentiator"
+    rationale: "Text-only would be indistinguishable from using an LLM directly"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+  - decision: "LiveKit deferred to v1.1 but architecture prepared"
+    rationale: "Multi-user video adds complexity; single-user voice is the MVP"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+  - decision: "Single-tenant architecture with multi-instance scaling"
+    rationale: "Simpler architecture; SaaS multi-tenancy via subdomains"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+  - decision: "ElevenLabs as sole voice vendor"
+    rationale: "Single vendor simplifies integration; accepted dependency risk"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+  - decision: "Sustainable Use License (n8n model)"
+    rationale: "Source-available, free to self-host, protects against competing managed services"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+  - decision: "CID prompts built into AI as skills, only build prompt generated"
+    rationale: "Discovery/Design/Stack are structured processes; build needs project-specific context"
+    decided_by: "Thomas"
+    date: "2026-01-05"
+
+# Compliance determination
+compliance:
+  mode: "none"
+  requirements_identified: []
+  key_constraints_for_design: []
+
+# Technical constraints for Design phase
+technical_constraints:
+  stack:
+    - "TypeScript (CID Stack standard)"
+    - "Express backend"
+    - "React frontend"
+    - "Drizzle ORM"
+    - "Zod validation"
+    - "Vitest testing"
+    - "PostgreSQL database"
+  infrastructure:
+    - "Docker with Docker Compose"
+    - "Single install script with interactive prompts"
+    - "Reverse proxy (Caddy/Traefik) default on, auto-SSL"
+    - "Default port 5090"
+    - "GitHub-built container image"
+  integrations:
+    - name: "ElevenLabs"
+      type: "REST API"
+      notes: "STT for user input, TTS for AI output; single vendor for voice pipeline"
+    - name: "Anthropic Claude"
+      type: "REST API"
+      notes: "Default AI vendor; Claude Opus 4.5"
+    - name: "OpenAI"
+      type: "REST API"
+      notes: "Alternative AI vendor"
+    - name: "LiveKit"
+      type: "Self-hosted"
+      notes: "v1.1; architecture prepared in v1; 1-4 concurrent users max"
+    - name: "S3-compatible storage"
+      type: "REST API"
+      notes: "Optional; local filesystem default"
+    - name: "SMTP"
+      type: "SMTP"
+      notes: "Magic link authentication"
+  scale:
+    concurrent_users: 4
+    data_volume: "Low-moderate; primarily text documents and transcripts"
+
+# Task classification preview for Design and Build phases
+task_classification:
+  human_sovereign:
+    - area: "Design Decisions"
+      examples:
+        - "UI/UX design approval"
+        - "API contract review"
+        - "Voice conversation flow approval"
+        - "Database schema approval"
+        - "Context window strategy decision"
+      review_level: "Product Owner"
+    - area: "Build Verification"
+      examples:
+        - "Feature acceptance testing"
+        - "Voice quality assessment"
+        - "Export format validation"
+      review_level: "Product Owner"
+  ai_delegatable:
+    - area: "Specification Generation"
+      examples:
+        - "API specification (OpenAPI)"
+        - "Database schema design"
+        - "Component scaffolding"
+      review_level: "Peer review"
+    - area: "Implementation"
+      examples:
+        - "Backend route implementation"
+        - "React component development"
+        - "Voice integration code"
+        - "Export functionality"
+      review_level: "Peer review"
+    - area: "Testing"
+      examples:
+        - "Unit test generation"
+        - "Integration test creation"
+      review_level: "Peer review"
+    - area: "Infrastructure"
+      examples:
+        - "Dockerfile creation"
+        - "Docker Compose configuration"
+        - "Install script development"
+      review_level: "Peer review"
+
+# Identified risks requiring Design phase attention
+risks_for_design:
+  - risk_id: "R3"
+    summary: "Claude context window may be exceeded during long discovery sessions"
+    design_impact: "Must design conversation management strategy"
+    mitigation_needed: "Summarization/chunking approach; token tracking UI; user warnings"
+  - risk_id: "R6"
+    summary: "Multiple system integration increases complexity"
+    design_impact: "Need clear abstraction layers"
+    mitigation_needed: "Define interfaces for AI, Voice, Storage; incremental integration plan"
+
+# Open questions requiring Design phase resolution
+open_questions:
+  - question: "What summarization strategy for long conversations?"
+    context: "Context window limits could break discovery flow"
+    suggested_owner: "Design"
+    blocking: false
+  - question: "How should token usage be displayed to users?"
+    context: "Users need visibility into API costs"
+    suggested_owner: "Design"
+    blocking: false
+  - question: "What rich text editor library to use?"
+    context: "Document editing is Must Have; many options exist"
+    suggested_owner: "Design"
+    blocking: false
+  - question: "PDF/DOCX export approach?"
+    context: "Multiple libraries available (Pandoc, pdf-lib, docx-templater)"
+    suggested_owner: "Design"
+    blocking: false
+
+# Success criteria summary for Design reference
+success_criteria_summary:
+  must_have_count: 20
+  should_have_count: 5
+  could_have_count: 4
+  key_criteria:
+    - "Voice conversation works smoothly via ElevenLabs"
+    - "CID workflow: Discovery → Design → Stack produces structured outputs"
+    - "Build handoff package ready for Claude Code"
+    - "Documents viewable, editable, exportable (MD/PDF/DOCX)"
+    - "Responsive design; works on mobile"
+
+# User persona summary for Design reference
+persona_summary:
+  - name: "Product Visionary"
+    role: "Founder/product owner with software idea"
+    key_needs:
+      - "Guided conversation (voice preferred)"
+      - "Clear output that developers understand"
+    key_pain_points:
+      - "Struggles to translate vision to requirements"
+      - "Documentation feels tedious"
+  - name: "Fractional Consultant"
+    role: "Technical consultant running discovery for clients"
+    key_needs:
+      - "Efficiency across multiple projects"
+      - "Professional handoff documents"
+    key_pain_points:
+      - "Manual prompt chaining is error-prone"
+      - "Client conversations don't flow into docs"
+  - name: "Instance Administrator"
+    role: "Person who installs/maintains OneShot"
+    key_needs:
+      - "Simple installation (under 30 min)"
+      - "Clear configuration, good logs"
+    key_pain_points:
+      - "Complex dependencies"
+      - "Debugging without adequate logging"
+
+# Session continuity for AI collaboration
+continuation_context: |
+  OneShot is the CID Framework productized. Instead of manually chaining prompts
+  (discovery → design → stack → build), the platform guides users through the
+  workflow and captures everything—especially voice conversations.
+  
+  Key decisions:
+  - Voice is the differentiator (not optional)
+  - ElevenLabs for STT/TTS (accepted single-vendor risk)
+  - Claude Opus 4.5 default, multi-vendor supported
+  - LiveKit for multi-user deferred to v1.1 (architecture prepared)
+  - Single-tenant, many users, multi-instance via subdomains
+  - n8n-style Sustainable Use License
+  
+  The voice pipeline: User speaks → ElevenLabs STT → Claude → ElevenLabs TTS → User hears
+  
+  Critical UX requirement: Conversation must feel smooth. Prototype was successful.
+  
+  CID skills (Discovery/Design/Stack) are built into the AI. Only the Build prompt
+  is generated from the three phase outputs, ready to paste into Claude Code.
+  
+  Token tracking at three levels: per session, per phase, per project.
+  
+  Installation: Single script, Docker Compose, reverse proxy default on, port 5090.
+
+# Stakeholder contacts for Design phase
+stakeholders:
+  - name: "Thomas"
+    role: "Founder / Product Owner"
+    contact: "Fractionate LLC"
+    availability: "Async; responsive"
+    decision_authority: "All product decisions"
+
+# Recommended next actions for Design phase
+next_actions:
+  - action: "Review all discovery artifacts"
+    priority: "high"
+    owner: "Design"
+  - action: "Create root CONTEXT.md"
+    priority: "high"
+    owner: "Design"
+  - action: "Define voice conversation UX flow"
+    priority: "high"
+    owner: "Design"
+  - action: "Design database schema (users, projects, conversations, documents, versions)"
+    priority: "high"
+    owner: "Design"
+  - action: "Define AI abstraction interface (multi-vendor)"
+    priority: "high"
+    owner: "Design"
+  - action: "Define storage abstraction interface (local + S3)"
+    priority: "medium"
+    owner: "Design"
+  - action: "Select rich text editor library"
+    priority: "medium"
+    owner: "Design"
+  - action: "Define export strategy (MD/PDF/DOCX)"
+    priority: "medium"
+    owner: "Design"
+  - action: "Design token tracking schema and UI"
+    priority: "medium"
+    owner: "Design"

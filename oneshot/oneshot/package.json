@@ -1,0 +1,58 @@
+{
+  "name": "oneshot",
+  "version": "1.0.0",
+  "description": "Voice-first platform for Collaborative Intelligence Development (CID)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:push": "drizzle-kit push",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "express": "^4.21.0",
+    "helmet": "^8.0.0",
+    "cors": "^2.8.5",
+    "cookie-parser": "^1.4.6",
+    "zod": "^3.23.8",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.4",
+    "argon2": "^0.41.1",
+    "jsonwebtoken": "^9.0.2",
+    "pino": "^9.4.0",
+    "pino-http": "^10.3.0",
+    "uuid": "^10.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/cookie-parser": "^1.4.7",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/uuid": "^10.0.0",
+    "@types/node": "^22.7.0",
+    "typescript": "^5.6.2",
+    "tsx": "^4.19.1",
+    "drizzle-kit": "^0.27.0",
+    "eslint": "^9.11.0",
+    "@eslint/js": "^9.11.0",
+    "typescript-eslint": "^8.7.0",
+    "vitest": "^2.1.1",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2",
+    "pino-pretty": "^11.2.2"
+  },
+  "author": "Fractionate LLC",
+  "license": "SEE LICENSE IN LICENSE.md"
+}

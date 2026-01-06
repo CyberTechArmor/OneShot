@@ -1,0 +1,39 @@
+# OneShot Caddy Configuration
+# Automatic HTTPS when domain is configured
+
+{
+	# Global options
+	email {$ADMIN_EMAIL:admin@example.com}
+}
+
+# Domain configuration (replace with your domain)
+{$DOMAIN:localhost} {
+	# Reverse proxy to API
+	reverse_proxy api:5090 {
+		# WebSocket support
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# Security headers
+	header {
+		X-Frame-Options "SAMEORIGIN"
+		X-Content-Type-Options "nosniff"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		# Remove server header
+		-Server
+	}
+
+	# Logging
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Development fallback (HTTP only)
+:80 {
+	reverse_proxy api:5090
+}

@@ -1,0 +1,286 @@
+# Constraint Manifest
+# Machine-readable specification of architectural invariants
+# OneShot - CID Platform
+
+version: "1.0"
+project: "OneShot"
+updated: "2026-01-05"
+
+constraints:
+  # ============================================================================
+  # Authentication Constraints
+  # ============================================================================
+  
+  - id: AUTH-001
+    name: "All API routes require authentication"
+    description: "Every route under /api/* except /api/auth/* must verify JWT token"
+    rationale: "Prevents unauthorized access to project data and AI resources"
+    scope: "src/api/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "route-handler-has-auth-middleware"
+    owner: "Backend"
+    severity: blocking
+    exceptions:
+      - "/api/auth/login"
+      - "/api/auth/register"
+      - "/api/auth/magic-link"
+      - "/api/auth/verify-magic-link"
+      - "/api/health"
+
+  - id: AUTH-002
+    name: "Password hashing uses Argon2id"
+    description: "All password storage must use Argon2id with recommended parameters"
+    rationale: "Argon2id is the current best practice for password hashing"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      required: ["argon2"]
+      forbidden: ["bcrypt", "scrypt", "md5", "sha1", "sha256"]
+    owner: "Backend"
+    severity: blocking
+
+  - id: AUTH-003
+    name: "Magic links expire in 15 minutes"
+    description: "Magic link tokens must have a 15-minute TTL"
+    rationale: "Limits exposure window for intercepted tokens"
+    scope: "src/api/auth/**/*.ts"
+    validation:
+      type: regex
+      pattern: "MAGIC_LINK_EXPIRY.*=.*15.*minutes"
+    owner: "Backend"
+    severity: warning
+
+  # ============================================================================
+  # Authorization Constraints
+  # ============================================================================
+
+  - id: AUTHZ-001
+    name: "Project access requires ownership or membership"
+    description: "Users can only access projects they own or are invited to"
+    rationale: "Prevents data leakage between users"
+    scope: "src/api/projects/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "project-access-check-before-data-return"
+    owner: "Backend"
+    severity: blocking
+
+  - id: AUTHZ-002
+    name: "Admin routes restricted to admin role"
+    description: "Routes under /api/admin/* require admin or super_admin role"
+    rationale: "Protects administrative functions from regular users"
+    scope: "src/api/admin/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "admin-role-check-middleware"
+    owner: "Backend"
+    severity: blocking
+
+  - id: AUTHZ-003
+    name: "Super admin functions require super_admin role"
+    description: "User promotion/demotion and system config require super_admin"
+    rationale: "First registered user becomes super_admin; highest privilege level"
+    scope: "src/api/admin/users/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "super-admin-role-check"
+    owner: "Backend"
+    severity: blocking
+
+  # ============================================================================
+  # Data Handling Constraints
+  # ============================================================================
+
+  - id: DATA-001
+    name: "Soft delete for all primary entities"
+    description: "Projects, documents, conversations use deleted_at instead of DELETE"
+    rationale: "Enables data recovery and audit trail; prevents accidental data loss"
+    scope: "src/db/schema.ts"
+    validation:
+      type: ast-pattern
+      rule: "table-has-deleted-at-column"
+    owner: "Backend"
+    severity: blocking
+    applies_to:
+      - users
+      - projects
+      - conversations
+      - documents
+      - document_versions
+
+  - id: DATA-002
+    name: "All tables have timestamps"
+    description: "Every table must have id, created_at, updated_at columns"
+    rationale: "Standard auditing and data management pattern"
+    scope: "src/db/schema.ts"
+    validation:
+      type: ast-pattern
+      rule: "table-has-standard-columns"
+    owner: "Backend"
+    severity: blocking
+
+  - id: DATA-003
+    name: "Token usage tracked for all AI calls"
+    description: "Every AI vendor call must record input_tokens, output_tokens, model"
+    rationale: "Enables cost tracking per session, phase, and project"
+    scope: "src/lib/ai/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "ai-call-logs-tokens"
+    owner: "Backend"
+    severity: blocking
+
+  - id: DATA-004
+    name: "Voice transcripts persisted immediately"
+    description: "STT results saved before AI processing; no transcript loss on failure"
+    rationale: "Voice input is valuable; must not be lost on downstream failures"
+    scope: "src/lib/voice/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "transcript-saved-before-processing"
+    owner: "Backend"
+    severity: blocking
+
+  # ============================================================================
+  # API Constraints
+  # ============================================================================
+
+  - id: API-001
+    name: "Standard error response format"
+    description: "All API errors return { code: string, message: string, details?: object }"
+    rationale: "Consistent error handling for frontend and debugging"
+    scope: "src/api/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "error-response-format"
+    owner: "Backend"
+    severity: warning
+
+  - id: API-002
+    name: "Request validation with Zod"
+    description: "All request bodies validated with Zod schemas before processing"
+    rationale: "Type safety and input sanitization"
+    scope: "src/api/**/*.ts"
+    validation:
+      type: import-check
+      required: ["zod"]
+    owner: "Backend"
+    severity: blocking
+
+  - id: API-003
+    name: "Pagination for list endpoints"
+    description: "All list endpoints support limit/offset with max 100 items"
+    rationale: "Prevents unbounded queries; consistent UX"
+    scope: "src/api/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "list-endpoints-paginated"
+    owner: "Backend"
+    severity: warning
+
+  # ============================================================================
+  # Architecture Constraints
+  # ============================================================================
+
+  - id: ARCH-001
+    name: "AI vendor abstraction"
+    description: "AI calls go through vendor-agnostic interface, not direct SDK calls"
+    rationale: "Enables switching between Claude, OpenAI, local models"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      forbidden_direct:
+        - "@anthropic-ai/sdk"
+        - "openai"
+      allowed_in:
+        - "src/lib/ai/vendors/**"
+    owner: "Backend"
+    severity: blocking
+
+  - id: ARCH-002
+    name: "Voice vendor abstraction"
+    description: "Voice calls go through vendor-agnostic interface"
+    rationale: "Enables future vendor swap if ElevenLabs issues arise"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      forbidden_direct:
+        - "elevenlabs"
+      allowed_in:
+        - "src/lib/voice/vendors/**"
+    owner: "Backend"
+    severity: blocking
+
+  - id: ARCH-003
+    name: "Storage abstraction"
+    description: "File storage via interface supporting local and S3"
+    rationale: "Users can choose local filesystem or S3-compatible storage"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      forbidden_direct:
+        - "@aws-sdk/client-s3"
+        - "minio"
+      allowed_in:
+        - "src/lib/storage/providers/**"
+    owner: "Backend"
+    severity: blocking
+
+  - id: ARCH-004
+    name: "Database access only through Drizzle"
+    description: "No raw SQL queries; all database access via Drizzle ORM"
+    rationale: "Type safety, query building, migration management"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      forbidden:
+        - "pg"
+        - "postgres"
+      allowed_in:
+        - "src/db/client.ts"
+    owner: "Backend"
+    severity: blocking
+
+  - id: ARCH-005
+    name: "LiveKit preparation without implementation"
+    description: "Data models include LiveKit-ready fields but no LiveKit code in v1"
+    rationale: "Prepare for v1.1 multi-user without v1 complexity"
+    scope: "src/**/*.ts"
+    validation:
+      type: import-check
+      forbidden:
+        - "livekit-server-sdk"
+        - "livekit-client"
+    owner: "Backend"
+    severity: blocking
+
+  # ============================================================================
+  # Performance Constraints
+  # ============================================================================
+
+  - id: PERF-001
+    name: "Database queries include appropriate indexes"
+    description: "All WHERE clauses on foreign keys have corresponding indexes"
+    rationale: "Prevents slow queries as data grows"
+    scope: "src/db/schema.ts"
+    validation:
+      type: custom
+      script: "scripts/validate-indexes.ts"
+    owner: "Backend"
+    severity: warning
+
+  - id: PERF-002
+    name: "Voice round-trip latency monitored"
+    description: "Log latency for STT, AI, and TTS stages separately"
+    rationale: "Enables debugging of voice conversation smoothness"
+    scope: "src/lib/voice/**/*.ts"
+    validation:
+      type: ast-pattern
+      rule: "voice-latency-logging"
+    owner: "Backend"
+    severity: warning
+
+escalation:
+  blocking: "CI fails. Merge prevented until resolved or override approved by constraint owner."
+  warning: "Flagged in PR review. Requires justification comment. May proceed with approval."

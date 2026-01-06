@@ -1,0 +1,263 @@
+# Integration Contract: ElevenLabs
+# Voice services: Speech-to-Text and Text-to-Speech
+# OneShot - CID Platform
+
+name: "elevenlabs"
+type: "REST"
+version: "v1"
+documentation_url: "https://elevenlabs.io/docs/api-reference"
+
+authentication:
+  type: "API Key"
+  header: "xi-api-key"
+  credentials_location: "ELEVENLABS_API_KEY environment variable"
+
+base_url:
+  production: "https://api.elevenlabs.io/v1"
+  # No staging/sandbox environment available
+
+rate_limits:
+  requests_per_minute: 100  # Varies by plan
+  daily_limit: null  # Varies by plan, character-based
+  headers:
+    # ElevenLabs uses custom headers
+    remaining_characters: "xi-characters-remaining"
+  backoff_strategy: "exponential"
+
+# ============================================================================
+# Endpoints Used
+# ============================================================================
+
+endpoints_used:
+  # Speech-to-Text
+  - name: "Speech to Text"
+    method: "POST"
+    path: "/speech-to-text"
+    purpose: "Transcribe user voice input to text"
+    request:
+      content_type: "multipart/form-data"
+      body_schema:
+        type: "object"
+        properties:
+          audio:
+            type: "file"
+            description: "Audio file (webm, mp3, wav, etc.)"
+          model_id:
+            type: "string"
+            description: "STT model to use"
+            example: "scribe_v1"
+    response:
+      success_codes: [200]
+      schema:
+        type: "object"
+        properties:
+          text:
+            type: "string"
+            description: "Transcribed text"
+          language_code:
+            type: "string"
+            description: "Detected language"
+          language_probability:
+            type: "number"
+            description: "Confidence of language detection"
+          words:
+            type: "array"
+            description: "Word-level timestamps (if requested)"
+    rate_limit_weight: 1
+
+  # Text-to-Speech
+  - name: "Text to Speech"
+    method: "POST"
+    path: "/text-to-speech/{voice_id}"
+    purpose: "Convert AI response text to speech audio"
+    request:
+      path_params:
+        - name: "voice_id"
+          type: "string"
+          description: "Voice ID from ElevenLabs library or cloned voice"
+      query_params:
+        - name: "output_format"
+          type: "string"
+          description: "Audio format"
+          default: "mp3_44100_128"
+      body_schema:
+        type: "object"
+        required: ["text"]
+        properties:
+          text:
+            type: "string"
+            maxLength: 5000
+            description: "Text to synthesize"
+          model_id:
+            type: "string"
+            description: "TTS model"
+            example: "eleven_turbo_v2_5"
+          voice_settings:
+            type: "object"
+            properties:
+              stability:
+                type: "number"
+                minimum: 0
+                maximum: 1
+              similarity_boost:
+                type: "number"
+                minimum: 0
+                maximum: 1
+    response:
+      success_codes: [200]
+      content_type: "audio/mpeg"
+      schema:
+        type: "binary"
+        description: "Audio stream in requested format"
+    rate_limit_weight: 1
+
+  # Text-to-Speech Streaming
+  - name: "Text to Speech (Streaming)"
+    method: "POST"
+    path: "/text-to-speech/{voice_id}/stream"
+    purpose: "Stream audio response for lower latency"
+    request:
+      path_params:
+        - name: "voice_id"
+          type: "string"
+      query_params:
+        - name: "output_format"
+          type: "string"
+          default: "mp3_44100_128"
+      body_schema:
+        type: "object"
+        required: ["text"]
+        properties:
+          text:
+            type: "string"
+            maxLength: 5000
+          model_id:
+            type: "string"
+            example: "eleven_turbo_v2_5"
+    response:
+      success_codes: [200]
+      content_type: "audio/mpeg"
+      streaming: true
+      description: "Chunked audio stream"
+    rate_limit_weight: 1
+
+  # List Voices (for configuration UI)
+  - name: "List Voices"
+    method: "GET"
+    path: "/voices"
+    purpose: "Retrieve available voices for admin configuration"
+    response:
+      success_codes: [200]
+      schema:
+        type: "object"
+        properties:
+          voices:
+            type: "array"
+            items:
+              type: "object"
+              properties:
+                voice_id:
+                  type: "string"
+                name:
+                  type: "string"
+                category:
+                  type: "string"
+    rate_limit_weight: 1
+
+# ============================================================================
+# Error Handling
+# ============================================================================
+
+error_handling:
+  retry_on: [429, 500, 502, 503, 504]
+  max_retries: 3
+  backoff:
+    type: "exponential"
+    initial_delay_ms: 500
+    max_delay_ms: 10000
+    multiplier: 2
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 5
+    reset_timeout_ms: 60000
+
+error_codes:
+  - code: 401
+    meaning: "Invalid API key"
+    action: "Check ELEVENLABS_API_KEY configuration"
+  - code: 403
+    meaning: "Quota exceeded or feature not available"
+    action: "Check subscription plan; notify user"
+  - code: 422
+    meaning: "Invalid request (bad audio format, text too long)"
+    action: "Validate input before sending"
+  - code: 429
+    meaning: "Rate limited"
+    action: "Apply exponential backoff"
+
+# ============================================================================
+# Data Mapping
+# ============================================================================
+
+data_mapping:
+  inbound:
+    # STT response
+    "text": "transcript"
+    "language_probability": "confidence"
+  outbound:
+    # TTS request
+    "responseText": "text"
+    "voiceId": "voice_id"
+
+# ============================================================================
+# Performance Considerations
+# ============================================================================
+
+latency_notes: |
+  Voice pipeline latency is critical for conversational UX.
+  
+  Typical latencies (from prototype):
+  - STT: 500-1500ms depending on audio length
+  - TTS: 200-500ms to first audio chunk (streaming)
+  
+  Optimization strategies:
+  1. Use streaming TTS (`/stream` endpoint) for faster perceived response
+  2. Use `eleven_turbo_v2_5` model for lower latency
+  3. Keep TTS text chunks short (sentence-level)
+  4. Pre-warm connection with keep-alive
+
+# ============================================================================
+# CID Task Classification
+# ============================================================================
+
+ai_delegation:
+  suitable_tasks:
+    - "HTTP client implementation for all endpoints"
+    - "Audio format validation (pre-upload)"
+    - "Response parsing and error normalization"
+    - "Retry logic with exponential backoff"
+    - "Streaming audio handling"
+    - "Latency metric logging"
+  human_required:
+    - "Voice selection and configuration"
+    - "TTS voice settings tuning (stability, similarity_boost)"
+    - "Error message design for quota/rate limit situations"
+    - "Fallback strategy decisions (if ElevenLabs unavailable)"
+
+# ============================================================================
+# Notes
+# ============================================================================
+
+notes: |
+  ElevenLabs is the sole voice vendor for v1 (accepted risk).
+  
+  Key considerations:
+  - Voice abstraction layer enables future vendor swap
+  - Monitor xi-characters-remaining for billing visibility
+  - User's API key stored encrypted in database
+  - Each instance uses its own API key (no pooling)
+  
+  Prototype validation:
+  - Successful round-trip STT → Claude → TTS in prototype
+  - Latency acceptable for conversational UX
+  - eleven_turbo_v2_5 provides good quality/speed tradeoff
