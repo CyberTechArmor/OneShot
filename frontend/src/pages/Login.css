@@ -45,3 +45,12 @@
   color: var(--text-muted);
   font-size: 0.875rem;
 }
+
+.login-footer a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.login-footer a:hover {
+  text-decoration: underline;
+}
