@@ -29,7 +29,7 @@ services:
     ports:
       - "5090:5090"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 5090
       DATABASE_URL: postgresql://postgres:postgres@db:5432/oneshot
       JWT_SECRET: ${JWT_SECRET:-development-secret-key-change-in-production-32chars}
