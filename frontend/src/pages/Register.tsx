@@ -2,40 +2,53 @@ import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import './Login.css';
 
-interface LoginProps {
-  onLogin: () => void;
+interface RegisterProps {
+  onRegister: () => void;
 }
 
-function Login({ onLogin }: LoginProps) {
+function Register({ onRegister }: RegisterProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name: name || undefined }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+        throw new Error(data.message || 'Registration failed');
       }
 
-      onLogin();
+      onRegister();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setIsLoading(false);
     }
@@ -46,10 +59,22 @@ function Login({ onLogin }: LoginProps) {
       <div className="login-container">
         <div className="login-header">
           <h1>OneShot</h1>
-          <p>Collaborative Intelligence Development</p>
+          <p>Create your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
+          <div className="form-group">
+            <label htmlFor="name">Name (optional)</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Your name"
+              autoComplete="name"
+            />
+          </div>
+
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
@@ -70,9 +95,22 @@ function Login({ onLogin }: LoginProps) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter your password"
+              placeholder="At least 8 characters"
               required
-              autoComplete="current-password"
+              autoComplete="new-password"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <input
+              id="confirmPassword"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Confirm your password"
+              required
+              autoComplete="new-password"
             />
           </div>
 
@@ -83,13 +121,13 @@ function Login({ onLogin }: LoginProps) {
             className="btn btn-primary login-btn"
             disabled={isLoading}
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
         <div className="login-footer">
           <p>
-            Don't have an account? <Link to="/register">Create one</Link>
+            Already have an account? <Link to="/login">Sign in</Link>
           </p>
         </div>
       </div>
@@ -97,4 +135,4 @@ function Login({ onLogin }: LoginProps) {
   );
 }
 
-export default Login;
+export default Register;
